@@ -27,4 +27,21 @@ This file is a running log of how AI assistance (Claude) was used during develop
 
 ---
 
+## Entry 2 — 2026-04-30 — Phase 2: Auth-service Express setup
+
+**Prompt summary**: Asked Claude to bootstrap the `auth-service` as a minimal Express server with a `/health` endpoint, and to install all dependencies the auth flow will eventually need (Express, CORS, dotenv, pg, bcryptjs, jsonwebtoken). Goal: get the service booting cleanly so subsequent phases can add register/login on top of a known-good baseline.
+
+**AI generated**:
+- `auth-service/package.json` (with `"type": "module"` for ESM, `start` and `dev` scripts).
+- `auth-service/src/index.js` — Express app, JSON middleware, CORS, health endpoint, listen on env-configurable port.
+- `auth-service/.env.example` — DB and JWT config template.
+- Updated `auth-service/README.md` with setup + run instructions.
+
+**Manual decisions / overrides made by me**:
+- Picked **bcryptjs** over **bcrypt** to avoid native compilation issues across machines.
+- Picked **ESM** modules over CommonJS — modern, cleaner imports, supported natively by Node 22.
+- Confirmed port 4001 for auth-service (frontend will hit the gateway on 4000, not the service directly).
+
+**Issues / learnings**: None — server booted on first try, `curl /health` returned the expected JSON.
+
 <!-- New entries are appended above this line as work progresses. Each entry should follow the same shape: prompt summary, AI generated, manual decisions/overrides, issues/learnings. -->
