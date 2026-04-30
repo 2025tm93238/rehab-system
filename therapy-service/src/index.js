@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import sessionRoutes from './routes/sessions.js';
+import patientProgressRoutes from './routes/patientProgress.js';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/sessions', sessionRoutes);
+app.use('/patients', patientProgressRoutes);
 
 const PORT = process.env.PORT || 4003;
 

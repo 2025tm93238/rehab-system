@@ -219,4 +219,39 @@ None at this stage — purely scaffolding work.
 - **Learning**: Excluding the row being updated from the overlap query (`AND id <> $excludeId`) is essential — otherwise updating a session would always conflict with itself.
 - **Learning**: `(duration_minutes || ' minutes')::interval` is a clean Postgres idiom for casting an integer column to an interval inside a query.
 
+## Entry 7 — 2026-04-30 — Phase 7: Progress tracking APIs
+
+### Verbatim user prompts
+
+> done
+> *(confirming Phase 6 commit and authorising Claude to start Phase 7: Progress tracking APIs.)*
+
+### AI generated
+- Extended `therapy-service/db/schema.sql` with the `progress_entries` table — `session_id` FK with **UNIQUE** (one progress per session), `pain_level` and `mobility_score` both `0..10` via CHECK, `summary` TEXT NOT NULL, `recorded_at` timestamp.
+- `therapy-service/src/controllers/progressController.js` with four handlers and a shared validator:
+  - `validatePayload({...}, {partial})` — reusable input validator (full vs partial mode).
+  - `createProgress` — verifies the session exists **and is `completed`** before allowing progress. UNIQUE violation (Postgres `23505`) is caught and returned as 409 with a hint to use PUT.
+  - `getProgress`, `updateProgress` — single-row by `session_id`; PUT supports partial fields.
+  - `getPatientProgressTimeline` — JOIN of `sessions` + `progress_entries` ordered chronologically; powers the "recovery arc" view in the frontend.
+- `therapy-service/src/routes/sessions.js` — added `POST /:id/progress`, `GET /:id/progress`, `PUT /:id/progress`.
+- `therapy-service/src/routes/patientProgress.js` — separate router for `GET /patients/:patientId/progress`, mounted at `/patients` in `index.js` so the URL reads naturally despite the timeline being owned by therapy-service.
+- Updated `therapy-service/src/index.js` and `README.md`.
+
+### Manual decisions / overrides made by me
+- Approved **one progress entry per session** (UNIQUE constraint) over allowing multiple. Real rehab clinics typically record one note per session; the recovery timeline becomes a clean one-row-per-session list. If a therapist needs to revise, they use PUT.
+- Approved that progress can only be recorded for **completed** sessions, returning the current `session_status` in the 400 response so the frontend can surface a useful message ("mark this session completed first").
+- Approved the timeline endpoint living under `/patients/:id/progress` on the therapy-service even though patient-service owns the patient table — the data being returned is therapy data, not patient data, so this is the right service. Just mounted at a path that reads naturally.
+
+### Issues / learnings
+- All 13 tests passed:
+  - 404 for missing session, 400 for non-completed session, 201 happy path
+  - 409 on duplicate (UNIQUE violation surfaced cleanly)
+  - 400 on invalid pain (15) and missing fields
+  - 200 GET, 404 GET when no entry, 200 PUT, 404 PUT-without-prior-entry
+  - Timeline ordering verified — pain 6 → 5 → 2 and mobility 3 → 5 → 8 across 3 sessions, chronologically ordered
+  - Empty timeline for a patient with no completed sessions returns `[]` (200), not 404 — correct: "no data yet" is valid state, not error
+  - 401 on no-token request to timeline
+- **Learning**: Adding the `UNIQUE` constraint at the DB level instead of in-app means I get the duplicate check for free, even under concurrent writes. The application code only needs to translate `23505` into a clean 409 response.
+- **Learning**: Treating "session not yet completed" as a 400 (not a 404 or 403) and returning the current status in the body is a small but meaningful UX choice — the frontend can show "complete the session first" instead of a generic error.
+
 <!-- New entries are appended above this line as work progresses. Each entry must follow the same shape: VERBATIM user prompts (mandatory, copy from chat as-is), AI generated, manual decisions/overrides, issues/learnings. -->
