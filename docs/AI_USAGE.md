@@ -111,4 +111,34 @@ None at this stage — purely scaffolding work.
 
 ---
 
+## Entry 4 — 2026-04-30 — Phase 4: Login + JWT authentication
+
+### Verbatim user prompts
+
+> Dont forget to maintain What prompts i give to get the work done,
+> The assessor is specific about it
+> *(course-correcting the format of `AI_USAGE.md` so that every entry quotes my actual chat messages, not paraphrased summaries. Triggered a rewrite of entries 1–3 with a "Verbatim user prompts" section.)*
+
+> done,
+>
+> The intent is it should look like in the assignment submission that , on my prompt only you comple the work,
+> *(confirming Phase 3 commit and reinforcing the rule that AI must never advance work without an explicit prompt from me. Functioned as the go-ahead to start Phase 4: Login + JWT.)*
+
+### AI generated
+- `auth-service/src/middleware/authMiddleware.js` — `requireAuth` (extracts `Bearer <token>`, verifies with `jsonwebtoken`, populates `req.user`) and `requireRole(...allowedRoles)` (RBAC gate). Designed to be reused by patient-service and therapy-service.
+- Extended `auth-service/src/controllers/authController.js` with `login` (validate fields → look up user → `bcrypt.compare` → sign JWT with `sub`, `email`, `role` claims and configurable expiry) and `me` (look up user by `req.user.id` from the verified token).
+- Updated `auth-service/src/routes/auth.js` — added `POST /login` (public) and `GET /me` (guarded by `requireAuth`).
+- Updated `auth-service/README.md` with login + /me curl examples and a note that the auth middleware is shared across services.
+
+### Manual decisions / overrides made by me
+- Confirmed the JWT secret comes from `process.env.JWT_SECRET` and the expiry from `JWT_EXPIRES_IN` (defaults to `1d`) — no hardcoded secrets.
+- Approved the choice to return the same `"invalid credentials"` error for both unknown-email and wrong-password cases (avoids leaking whether an email is registered — small but standard hardening).
+- Approved JWT claim shape: `sub` = user id (standard claim name), plus `email` and `role` so downstream services don't need to re-query the DB on every request.
+- Approved factoring `requireRole` out as a separate middleware now even though it isn't used yet — it'll be needed in patient-service (admins manage users) and therapy-service.
+
+### Issues / learnings
+- All 7 tests passed on first run (valid login → 200 + JWT, wrong password → 401, unknown email → 401, missing fields → 400, valid /me → 200, no token → 401, malformed token → 401).
+- Phase 3's stale-process bug taught me to kill any process on port 4001 before booting; added that as a guard in the test script (`lsof -ti :4001 | xargs kill`).
+- **Learning**: same generic 401 message for bad-email vs bad-password is a deliberate hardening choice, not a UX bug — worth noting if the frontend later wants to surface a more specific error, it has to do so without giving away whether an email exists.
+
 <!-- New entries are appended above this line as work progresses. Each entry must follow the same shape: VERBATIM user prompts (mandatory, copy from chat as-is), AI generated, manual decisions/overrides, issues/learnings. -->

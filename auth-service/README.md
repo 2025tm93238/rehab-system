@@ -5,17 +5,14 @@ Handles user registration, login, and JWT-based authentication. Supports two rol
 - Port: `4001`
 - Endpoints:
   - `GET  /health` — service health probe
-  - `POST /register` — register a new user (implemented)
-  - `POST /login` — authenticate and return a JWT (next phase)
-  - `GET  /me` — return the current user (next phase)
+  - `POST /register` — register a new user
+  - `POST /login` — authenticate and return a JWT
+  - `GET  /me` — return the current user (requires `Authorization: Bearer <token>`)
 
 ## Database setup (one-time)
 
 ```bash
-# Create the shared database
 psql -h localhost -U postgres -c "CREATE DATABASE rehab_db;"
-
-# Apply this service's schema
 psql -h localhost -U postgres -d rehab_db -f auth-service/db/schema.sql
 ```
 
@@ -30,28 +27,44 @@ npm start
 
 The service starts on `http://localhost:4001`.
 
-## Try the register endpoint
+## Try the endpoints
+
+### Register
 
 ```bash
 curl -X POST http://localhost:4001/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Jane Therapist",
-    "email": "jane@clinic.test",
-    "password": "secret123",
-    "role": "therapist"
-  }'
+  -d '{"name":"Jane Therapist","email":"jane@clinic.test","password":"secret123","role":"therapist"}'
 ```
 
 Response (201):
 ```json
+{ "id": 1, "name": "Jane Therapist", "email": "jane@clinic.test", "role": "therapist", "created_at": "..." }
+```
+
+### Login
+
+```bash
+curl -X POST http://localhost:4001/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane@clinic.test","password":"secret123"}'
+```
+
+Response (200):
+```json
 {
-  "id": 1,
-  "name": "Jane Therapist",
-  "email": "jane@clinic.test",
-  "role": "therapist",
-  "created_at": "2026-04-30T..."
+  "token": "eyJhbGciOi...",
+  "user": { "id": 1, "name": "Jane Therapist", "email": "jane@clinic.test", "role": "therapist" }
 }
 ```
 
-Validation errors return `400`. Duplicate emails return `409`.
+### Get current user
+
+```bash
+TOKEN="<paste token from login>"
+curl http://localhost:4001/me -H "Authorization: Bearer $TOKEN"
+```
+
+## Auth middleware (shared)
+
+`src/middleware/authMiddleware.js` exports `requireAuth` (verifies JWT, populates `req.user`) and `requireRole(...allowedRoles)` (gates by role). The same middleware logic is reused by `patient-service` and `therapy-service`.

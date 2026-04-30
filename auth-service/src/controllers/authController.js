@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 
 const ALLOWED_ROLES = ['admin', 'therapist'];
@@ -48,6 +49,71 @@ export async function register(req, res) {
     return res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('register error:', err);
+    return res.status(500).json({ error: 'internal server error' });
+  }
+}
+
+export async function login(req, res) {
+  try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
+
+    const emailNormalized = String(email).toLowerCase().trim();
+
+    const result = await pool.query(
+      'SELECT id, name, email, password_hash, role FROM users WHERE email = $1',
+      [emailNormalized]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const passwordOk = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordOk) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { sub: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error('login error:', err);
+    return res.status(500).json({ error: 'internal server error' });
+  }
+}
+
+export async function me(req, res) {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'user not found' });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('me error:', err);
     return res.status(500).json({ error: 'internal server error' });
   }
 }
