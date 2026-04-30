@@ -141,4 +141,44 @@ None at this stage — purely scaffolding work.
 - Phase 3's stale-process bug taught me to kill any process on port 4001 before booting; added that as a guard in the test script (`lsof -ti :4001 | xargs kill`).
 - **Learning**: same generic 401 message for bad-email vs bad-password is a deliberate hardening choice, not a UX bug — worth noting if the frontend later wants to surface a more specific error, it has to do so without giving away whether an email exists.
 
+## Entry 5 — 2026-04-30 — Phase 5: Patient-service setup + CRUD
+
+### Verbatim user prompts
+
+> done
+> *(confirming Phase 4 commit and authorising Claude to start Phase 5: Patient-service setup + CRUD.)*
+
+### AI generated
+- `patient-service/package.json` (ESM, start/dev scripts, deps: express, cors, dotenv, pg, jsonwebtoken).
+- `patient-service/db/schema.sql` — `patients` table (id, name, age with CHECK, gender ENUM-via-CHECK, contact, diagnosis, `assigned_therapist_id` FK → `users(id)` ON DELETE SET NULL, status ENUM-via-CHECK, admission_date, timestamps) + indexes on status and therapist.
+- `patient-service/src/db.js` — pg `Pool` (same shape as auth-service).
+- `patient-service/src/middleware/authMiddleware.js` — copy of auth-service's middleware (each microservice ships its own, both services trust the same `JWT_SECRET`). Comment in the file explains why it's duplicated.
+- `patient-service/src/controllers/patientController.js` — five handlers:
+  - `createPatient` — validates required fields, age range, gender enum, status enum, then INSERT with COALESCE defaults. Catches FK violation (Postgres code `23503`) and returns 400 with a friendly message.
+  - `listPatients` — supports `?status=`, `?therapistId=`, `?search=` filters via parameterised SQL.
+  - `getPatient` — id validation + 404 if missing.
+  - `updatePatient` — accepts a partial payload, builds dynamic UPDATE only for the supplied (whitelisted) fields, re-validates each field, bumps `updated_at`.
+  - `deletePatient` — id validation + 404 if missing, returns 204.
+- `patient-service/src/routes/patients.js` — Router with `requireAuth` mounted globally; DELETE additionally guarded by `requireRole('admin')`.
+- `patient-service/src/index.js` — Express app with `/health` and `/patients` routes, port 4002.
+- `patient-service/.env.example`, `patient-service/.env` (gitignored), and a full `patient-service/README.md` with curl examples.
+
+### Manual decisions / overrides made by me
+- Provided the Postgres password (`postgres`) and confirmed `JWT_SECRET` in patient-service `.env` matches auth-service's exactly so issued tokens verify here.
+- Approved the **shared-nothing microservice pattern** — auth-middleware is duplicated across services rather than imported, with a comment noting this. (In a larger system this would become a shared npm package; for an academic project, duplication is clearer.)
+- Approved making `delete` admin-only and the rest of the CRUD available to both roles.
+- Approved the patient model fields (age, gender, contact, diagnosis, admission_date, status, assigned_therapist_id) — sized for what a small rehab clinic actually tracks, not over-engineered.
+
+### Issues / learnings
+- All 15 tests passed:
+  - 401 without token
+  - 201 with therapist token (with and without FK)
+  - 400 on missing fields, invalid age, bad FK (`23503` mapped from Postgres)
+  - 200 on list/search/filter (counts: 2, 1, 1)
+  - 200/404 on `/:id`
+  - 200 on partial PUT (status only — dynamic UPDATE worked)
+  - 403 on therapist DELETE, 204 on admin DELETE
+- **Learning**: Returning Postgres FK violation as 400 (instead of letting it bubble to a 500) makes the API much friendlier — the client sees "assigned_therapist_id does not refer to a real user" instead of an opaque server error. Worth doing for every cross-service reference.
+- **Learning**: Whitelisting which fields a PUT can touch (rather than spreading `req.body` into the UPDATE) prevents trivial mass-assignment bugs (a malicious client trying to set `id` or `created_at`).
+
 <!-- New entries are appended above this line as work progresses. Each entry must follow the same shape: VERBATIM user prompts (mandatory, copy from chat as-is), AI generated, manual decisions/overrides, issues/learnings. -->
