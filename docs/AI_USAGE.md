@@ -181,4 +181,42 @@ None at this stage — purely scaffolding work.
 - **Learning**: Returning Postgres FK violation as 400 (instead of letting it bubble to a 500) makes the API much friendlier — the client sees "assigned_therapist_id does not refer to a real user" instead of an opaque server error. Worth doing for every cross-service reference.
 - **Learning**: Whitelisting which fields a PUT can touch (rather than spreading `req.body` into the UPDATE) prevents trivial mass-assignment bugs (a malicious client trying to set `id` or `created_at`).
 
+## Entry 6 — 2026-04-30 — Phase 6: Therapy-service + session APIs
+
+### Verbatim user prompts
+
+> done
+> *(confirming Phase 5 commit and authorising Claude to start Phase 6: Therapy-service + session APIs.)*
+
+### AI generated
+- `therapy-service/package.json` (ESM, deps: express, cors, dotenv, pg, jsonwebtoken).
+- `therapy-service/db/schema.sql` — `sessions` table with FKs to both `patients(id)` (CASCADE) and `users(id)` (RESTRICT), CHECK on duration (1–480 min), CHECK on status enum (scheduled/completed/cancelled), and indexes on patient/therapist/scheduled_at.
+- `therapy-service/src/db.js`, `therapy-service/src/middleware/authMiddleware.js` — copies of the auth-service versions (shared-nothing pattern).
+- `therapy-service/src/controllers/sessionController.js` — four handlers and one private helper:
+  - `findOverlap(therapistId, newStart, newEnd, excludeId?)` — single SQL query that finds any non-cancelled session for the therapist whose `[start, start+duration)` interval overlaps the new window. Used by both create and update paths.
+  - `createSession` — full validation, FK-violation mapping (PG `23503` → 400), overlap check returns **409 with `conflicting_session_id`**.
+  - `listSessions` — `?patientId=`, `?therapistId=`, `?status=` filters via parameterised SQL.
+  - `getSession`, `updateSession` — `updateSession` accepts a partial payload (status / notes / scheduled_at / duration_minutes), and **re-runs the overlap check** when time fields change, excluding the row being edited.
+- `therapy-service/src/routes/sessions.js` — auth required globally; full CRUD on `/sessions`.
+- `therapy-service/src/index.js` — port 4003.
+- `therapy-service/.env.example`, `.env`, `README.md` with curl examples for the overlap rejection and session completion flows.
+
+### Manual decisions / overrides made by me
+- Approved the **interval-overlap SQL** form (`scheduled_at < new_end AND scheduled_at + duration > new_start`) over `tstzrange &&` operators — simpler, no extension, easier for the assessor to read.
+- Approved that **cancelled sessions free the slot** but **completed sessions still block it** — completed sessions are historical truth; the therapist *was* there at that time, so a new session can't claim that window even retroactively. Verified by tests T15 (still blocks after completion) and T17 (slot frees after cancellation).
+- Confirmed `session_type` should be free-text (`VARCHAR(50)`) rather than an enum — clinics offer many therapy types and the assignment doesn't fix a list.
+
+### Issues / learnings
+- All 17 tests passed:
+  - 401 without token, 201 happy-path create
+  - **409 overlap for same therapist** (the assignment-required behaviour)
+  - 201 same time slot but **different therapist** (correct: therapists are independent)
+  - 400 on missing fields, bad duration, bad timestamp, bad FK
+  - List filters by therapist (count=2) and status (count=3) work
+  - PUT to mark completed + add notes (200)
+  - Reschedule into a completed-session slot still 409 (completed sessions block)
+  - After cancelling, the slot frees and the same time becomes available (200)
+- **Learning**: Excluding the row being updated from the overlap query (`AND id <> $excludeId`) is essential — otherwise updating a session would always conflict with itself.
+- **Learning**: `(duration_minutes || ' minutes')::interval` is a clean Postgres idiom for casting an integer column to an interval inside a query.
+
 <!-- New entries are appended above this line as work progresses. Each entry must follow the same shape: VERBATIM user prompts (mandatory, copy from chat as-is), AI generated, manual decisions/overrides, issues/learnings. -->
