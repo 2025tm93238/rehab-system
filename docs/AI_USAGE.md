@@ -44,4 +44,25 @@ This file is a running log of how AI assistance (Claude) was used during develop
 
 **Issues / learnings**: None — server booted on first try, `curl /health` returned the expected JSON.
 
+## Entry 3 — 2026-04-30 — Phase 3: Auth-service register API + DB
+
+**Prompt summary**: Asked Claude to add a `POST /register` endpoint that accepts `name`, `email`, `password`, `role`, validates input (role enum, min password length, required fields, duplicate email), hashes the password with bcryptjs, and inserts into a Postgres `users` table. Wanted layered structure (route → controller → db), not all logic in one file.
+
+**AI generated**:
+- `auth-service/db/schema.sql` — `users` table (id, name, email UNIQUE, password_hash, role with CHECK constraint, created_at) + email index.
+- `auth-service/src/db.js` — pg `Pool` reading config from env, with an error handler.
+- `auth-service/src/controllers/authController.js` — `register` handler with input validation, duplicate-email check, bcrypt hashing, insert + RETURNING (deliberately omits `password_hash` from the response).
+- `auth-service/src/routes/auth.js` — Express Router mounting `POST /register`.
+- Updated `auth-service/src/index.js` to mount the router.
+- Updated `auth-service/README.md` with DB setup steps + curl example.
+
+**Manual decisions / overrides made by me**:
+- Provided my Postgres password (`postgres`) for `.env`. Confirmed `.env` is gitignored so the secret stays local.
+- Approved the role enum being enforced **both** in the SQL `CHECK` constraint and in the controller — defense in depth.
+- Approved email normalization (lowercase + trim) on insert.
+
+**Issues / learnings**:
+- First test run returned 404 on every call. Root cause: a stale auth-service process from Phase 2 was still bound to port 4001, so the new code (with routes) never started. Once I killed the stale PID with `lsof -i :4001` and restarted, all 6 test cases passed (valid register, duplicate → 409, missing fields → 400, bad role → 400, short password → 400, admin role → 201).
+- **Takeaway**: when a server "boots" but routes look missing, check the actual PID owning the port — Express's "Cannot POST /xxx" looks identical whether code is missing the route or whether you're hitting an older instance of the same service.
+
 <!-- New entries are appended above this line as work progresses. Each entry should follow the same shape: prompt summary, AI generated, manual decisions/overrides, issues/learnings. -->
