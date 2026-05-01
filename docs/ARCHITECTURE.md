@@ -1,6 +1,24 @@
-# Architecture
+# Architecture — Rehab Patient Tracking System
 
-## System diagram
+---
+
+## Overview
+
+This system follows a **microservices-based architecture** with a React frontend, an API Gateway, and independent backend services for authentication, patient management, and therapy tracking, all backed by a shared PostgreSQL database.
+
+---
+
+## Tech Stack
+
+* **Frontend:** React + Vite
+* **Backend:** Node.js (Express)
+* **Database:** PostgreSQL
+* **Authentication:** JWT
+* **Communication:** REST APIs via API Gateway
+
+---
+
+## System Diagram
 
 ```
                         ┌──────────────────────────┐
@@ -13,13 +31,13 @@
                         ┌──────────────────────────┐
                         │       API Gateway        │
                         │     (Express, port 4000) │
-                        │   pathFilter routing     │
+                        │   path-based routing     │
                         └────┬───────┬─────────┬───┘
               /api/auth/*    │       │         │   /api/sessions/*
                              │       │         │   /api/patients/:id/progress
                              ▼       ▼         ▼
                 ┌────────────┐ ┌─────────────┐ ┌─────────────────┐
-                │ auth-svc   │ │ patient-svc │ │ therapy-svc     │
+                │ auth-service │ │ patient-service │ │ therapy-service │
                 │ port 4001  │ │ port 4002   │ │ port 4003       │
                 │ users/JWT  │ │ patients    │ │ sessions+progress│
                 └─────┬──────┘ └──────┬──────┘ └─────────┬───────┘
@@ -34,116 +52,174 @@
                         └──────────────────────────┘
 ```
 
-## Microservice topology
+---
+
+## Microservice Topology
 
 Three independent backend services + one API gateway:
 
-| Service | Port | Owns | Reads from |
-|---|---|---|---|
-| `auth-service` | 4001 | `users` | — |
-| `patient-service` | 4002 | `patients` | `users` (via FK only) |
+| Service           | Port | Owns                           | Reads from                        |
+| ----------------- | ---- | ------------------------------ | --------------------------------- |
+| `auth-service`    | 4001 | `users`                        | —                                 |
+| `patient-service` | 4002 | `patients`                     | `users` (via FK only)             |
 | `therapy-service` | 4003 | `sessions`, `progress_entries` | `patients`, `users` (via FK only) |
-| `api-gateway` | 4000 | nothing | proxies to all three |
+| `api-gateway`     | 4000 | —                              | proxies to all services           |
 
-**Shared-nothing principle** — no service imports code from another. Each ships its own copy of:
-- `db.js` (pg pool wrapper)
-- `middleware/authMiddleware.js` (JWT verifier)
+---
 
-The auth middleware copies are functionally identical and trust the same `JWT_SECRET`. In a production system this would be extracted into a shared npm package; for the academic scope, duplication keeps the project simple to read.
+## Services Summary
 
-**Shared database, separate ownership** — all four tables live in one Postgres database (`rehab_db`), but each service is the only one that writes to its own tables. Cross-service references happen at the FK level, never via cross-service HTTP calls. This avoids the hardest microservice problem (distributed transactions) while keeping service code modular.
+* **auth-service** → user authentication & JWT
+* **patient-service** → patient records management
+* **therapy-service** → sessions and progress tracking
+* **api-gateway** → request routing layer
 
-## Authentication flow
+---
+
+## Key Design Decisions
+
+* API Gateway is intentionally lightweight (no authentication logic)
+* Each service independently validates JWT tokens
+* Shared database is used to avoid distributed transaction complexity
+* No inter-service HTTP calls (simplifies architecture and debugging)
+
+---
+
+## Architecture Principles
+
+### Shared-Nothing Principle
+
+No service imports code from another. Each service maintains its own:
+
+* `db.js` (database connection)
+* `authMiddleware.js` (JWT verification)
+
+In production, these would be shared via a package. For this assignment, duplication improves clarity and independence.
+
+---
+
+### Shared Database, Separate Ownership
+
+All tables reside in a single PostgreSQL database (`rehab_db`), but:
+
+* Each service writes only to its own tables
+* Cross-service relationships exist only via foreign keys
+* No service directly calls another service
+
+This avoids distributed transactions while maintaining modular design.
+
+---
+
+## Authentication Flow
 
 ```
 1. Browser → POST /api/auth/login → Gateway → auth-service
-2. auth-service: verify password (bcrypt.compare) → sign JWT
+2. auth-service:
+       - verify password (bcrypt.compare)
+       - generate JWT
        claims: { sub: user_id, email, role, iat, exp }
 3. Frontend stores token in localStorage
-4. Every subsequent request: axios interceptor adds  Authorization: Bearer <token>
-5. Gateway: transparent proxy — does NOT verify the token
-6. Downstream service: requireAuth middleware verifies JWT with shared JWT_SECRET
-       attaches  req.user = { id, email, role }
-7. requireRole('admin') middleware (e.g. patient DELETE) checks req.user.role
+4. Axios interceptor attaches Authorization header
+5. Gateway forwards request (no validation)
+6. Downstream service verifies JWT
+       → attaches req.user
+7. Role-based middleware enforces access control
 ```
 
-The gateway is deliberately dumb. Verification at the leaf service means each service can be deployed independently and tested directly without going through the gateway.
+The API Gateway is deliberately simple. Authentication is handled at the service level, allowing independent deployment and testing.
 
-## Frontend component hierarchy
+---
+
+## Frontend Component Hierarchy
 
 ```
 <BrowserRouter>
- └─ <AuthProvider>                               (token + user state, login/signup/logout)
+ └─ <AuthProvider>
      └─ <App>
-         ├─ <Navbar>                              (active link highlight, logout)
+         ├─ <Navbar>
          └─ <Routes>
              ├─ /login        → <Login>
              ├─ /signup       → <Signup>
              ├─ /dashboard    → <ProtectedRoute><Dashboard/></ProtectedRoute>
              ├─ /patients     → <ProtectedRoute><Patients/></ProtectedRoute>
-             │                    └─ <PatientForm>      (create)
+             │                    └─ <PatientForm>
              ├─ /patients/:id → <ProtectedRoute><PatientDetail/></ProtectedRoute>
-             │                    ├─ <PatientForm>      (edit)
+             │                    ├─ <PatientForm>
              │                    ├─ <PatientSessions>
-             │                    │   ├─ <SessionForm>  (lockPatient=true)
-             │                    │   └─ <SessionList>  (hidePatient=true)
+             │                    │   ├─ <SessionForm>
+             │                    │   └─ <SessionList>
              │                    └─ <ProgressTimeline>
-             │                        └─ <TrendChart>   (inline SVG)
+             │                        └─ <TrendChart>
              ├─ /sessions     → <ProtectedRoute><Sessions/></ProtectedRoute>
              │                    ├─ <SessionForm>
              │                    └─ <SessionList>
              ├─ /sessions/:id → <ProtectedRoute><SessionDetail/></ProtectedRoute>
-             │                    ├─ <SessionForm>      (reschedule/edit)
-             │                    └─ <SessionProgress>  (only when status=completed)
+             │                    ├─ <SessionForm>
+             │                    └─ <SessionProgress>
              │                        └─ <ProgressForm>
              └─ *             → <NotFound>
 ```
 
-### Reusable building blocks
+---
 
-- `<PatientForm>` — used for both create and edit (fields + validation)
-- `<SessionForm>` — used in three places: top-level scheduling, reschedule on detail page, inline schedule on patient page (with `lockPatient` to hide the patient picker)
-- `<SessionList>` — used on the Sessions page, the Dashboard, and inline on PatientDetail (with `hidePatient` when context already implies it)
-- `<ProgressForm>` — used for both record-progress and edit-progress
-- `<ScoreBar>` (private to SessionProgress) — visual bar for pain / mobility scores
-- `<TrendChart>` (private to ProgressTimeline) — minimal inline SVG chart, no external charting lib
+## Reusable Components
 
-### Cross-cutting concerns
+* `<PatientForm>` — create/edit patient
+* `<SessionForm>` — create/reschedule session
+* `<SessionList>` — reusable across pages
+* `<ProgressForm>` — add/edit progress
+* `<ScoreBar>` — visual score representation
+* `<TrendChart>` — inline SVG chart
 
-- **`src/api/client.js`** — the single Axios instance. One request interceptor attaches the JWT, one response interceptor handles 401 (clears storage + hard-redirects to /login, with a guard to avoid loops on /login itself).
-- **`src/auth/AuthContext.jsx`** — the only place that touches `localStorage` for the token; the rest of the app uses `useAuth()`.
-- **`src/auth/ProtectedRoute.jsx`** — guards every authenticated route. Captures the originally-requested location so post-login can redirect back.
-- **`src/utils/format.js`** — date formatting helpers shared by SessionList, SessionDetail, ProgressTimeline.
+---
 
-## Key data flows
+## Cross-Cutting Concerns
 
-### Schedule a therapy session (with overlap rejection)
+* **API Client (`client.js`)** — handles JWT injection & error handling
+* **Auth Context** — manages user state globally
+* **ProtectedRoute** — route-level access control
+* **Utility functions** — date formatting & helpers
+
+---
+
+## Key Data Flows
+
+### 1. Schedule Therapy Session (with Overlap Prevention)
 
 ```
-User clicks "+ Schedule session"
-  → SessionForm fetches GET /api/patients?status=active to populate dropdown
-User submits the form
-  → POST /api/sessions  → gateway → therapy-service
+User schedules session
+  → POST /api/sessions
   → therapy-service:
-       1. validate fields (duration 1-480, valid timestamp, etc.)
-       2. findOverlap(therapist_id, start, end) — single SQL using interval overlap
-       3. if overlap exists → 409 { error, conflicting_session_id }
-       4. else INSERT
-  → SessionForm catches 409 → shows "Therapist already has session #N at that time"
+       validate input
+       check overlap using SQL interval logic
+       if conflict → 409 error
+       else insert session
+  → UI displays conflict message if needed
 ```
 
-### Patient progress timeline (cross-service join)
+---
+
+### 2. Patient Progress Timeline
 
 ```
-User opens /patients/:id
-  → PatientDetail fetches:
-       GET /api/patients/:id        → patient-service  (patient record)
-       GET /api/sessions?patientId=:id → therapy-service (session list)
-       GET /api/patients/:id/progress  → therapy-service (timeline)
-                                         JOIN sessions ⨯ progress_entries
-                                         WHERE patient_id = :id
-                                         ORDER BY scheduled_at ASC
-  → ProgressTimeline renders <TrendChart> + chronological list
+User opens patient detail page
+  → Fetch patient data
+  → Fetch sessions
+  → Fetch progress timeline
+  → therapy-service performs JOIN (sessions + progress_entries)
+  → UI renders chronological recovery view
 ```
 
-The timeline endpoint deliberately lives on therapy-service (not patient-service) because it returns therapy data — the URL `/patients/:id/progress` reads naturally for the client, but the gateway routes it to therapy-service via a more-specific path filter that fires before the general `/api/patients/*` rule.
+The progress endpoint is handled by `therapy-service` since it owns session and progress data, even though the route appears under `/patients`.
+
+---
+
+## Summary
+
+This architecture balances:
+
+* Simplicity (shared DB, no service-to-service calls)
+* Modularity (separate services)
+* Scalability (clear separation of concerns)
+
+It is intentionally designed to demonstrate **real-world microservices concepts within an academic scope**.

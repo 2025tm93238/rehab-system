@@ -1,20 +1,113 @@
-# API reference
+# API Reference — Rehab Patient Tracking System
 
-All endpoints below are documented as the **frontend sees them** (via the API gateway at `http://localhost:4000`). Internally the gateway strips `/api/...` and forwards to the relevant microservice. See `ARCHITECTURE.md` for routing rules.
+## Base URL
 
-**Auth model**: every endpoint except `POST /api/auth/register` and `POST /api/auth/login` requires `Authorization: Bearer <token>` from `/api/auth/login`. `DELETE /api/patients/:id` additionally requires the `admin` role.
+```
+http://localhost:4000/api
+```
 
-**Error envelope**: all 4xx and 5xx responses return JSON like `{ "error": "human-readable message" }`. Some errors include extra context (e.g. `conflicting_session_id` on a 409).
+All endpoints are exposed via the **API Gateway**.
 
 ---
 
-## Auth — `auth-service`
+## Architecture Note
 
-### `POST /api/auth/register`
+All endpoints below are documented as the **frontend sees them** (via the API gateway).
+Internally, the gateway strips `/api/...` and forwards requests to the respective microservice.
 
-Create a new user account. Public.
+---
 
-**Request body**
+## Authentication
+
+All endpoints require:
+
+```
+Authorization: Bearer <JWT>
+```
+
+### Exceptions
+
+* `POST /api/auth/register`
+* `POST /api/auth/login`
+
+### Roles
+
+* `admin`
+* `therapist`
+
+### Authorization Rules
+
+* Only `admin` can delete patients
+* All other actions allowed for authenticated users
+
+---
+
+## Error Handling
+
+All error responses follow this format:
+
+```json
+{
+  "error": "Human-readable message"
+}
+```
+
+### Common Status Codes
+
+* `400` — Validation error / bad request
+* `401` — Unauthorized (invalid/missing token)
+* `403` — Forbidden (role restriction)
+* `404` — Resource not found
+* `409` — Conflict (e.g., duplicate or overlapping data)
+* `502` — Upstream service unavailable
+
+---
+
+## API Overview
+
+| Service   | Endpoint                        | Description      |
+| --------- | ------------------------------- | ---------------- |
+| Auth      | POST /api/auth/register         | Register user    |
+| Auth      | POST /api/auth/login            | Login user       |
+| Auth      | GET /api/auth/me                | Get current user |
+| Patients  | POST /api/patients              | Create patient   |
+| Patients  | GET /api/patients               | List patients    |
+| Sessions  | POST /api/sessions              | Create session   |
+| Sessions  | GET /api/sessions               | List sessions    |
+| Progress  | POST /api/sessions/:id/progress | Add progress     |
+| Dashboard | GET /health                     | Gateway health   |
+
+---
+
+## Typical Workflow
+
+1. Register user → `POST /api/auth/register`
+2. Login → receive JWT
+3. Create patient → `POST /api/patients`
+4. Schedule session → `POST /api/sessions`
+5. Update session status (completed)
+6. Add progress → `POST /api/sessions/:id/progress`
+7. View patient progress timeline
+
+---
+
+## Business Rules
+
+* Therapists **cannot have overlapping sessions**
+* Progress can be added **only after session is completed**
+* Each session can have **only one progress record**
+* Deleting patients is **restricted to admin users**
+
+---
+
+# Auth — `auth-service`
+
+## POST /api/auth/register
+
+Create a new user account.
+
+### Request
+
 ```json
 {
   "name": "Jane Therapist",
@@ -24,13 +117,15 @@ Create a new user account. Public.
 }
 ```
 
-**Validation**
-- `name`, `email`, `password`, `role` — all required
-- `email` — must match `^[^\s@]+@[^\s@]+\.[^\s@]+$`
-- `password` — minimum 6 characters
-- `role` — `"admin"` or `"therapist"` only
+### Validation
 
-**Response 201**
+* All fields required
+* Email must be valid
+* Password ≥ 6 characters
+* Role: `admin` or `therapist`
+
+### Response 201
+
 ```json
 {
   "id": 1,
@@ -41,120 +136,134 @@ Create a new user account. Public.
 }
 ```
 
-**Errors**
-- `400` missing fields, invalid email format, short password, bad role
-- `409` email already registered
+### Errors
 
-### `POST /api/auth/login`
-
-Exchange credentials for a JWT. Public.
-
-**Request body**
-```json
-{ "email": "jane@clinic.test", "password": "secret123" }
-```
-
-**Response 200**
-```json
-{
-  "token": "eyJhbGciOi...",
-  "user": { "id": 1, "name": "Jane Therapist", "email": "jane@clinic.test", "role": "therapist" }
-}
-```
-
-JWT claims: `sub` (user id), `email`, `role`, `iat`, `exp` (configurable, defaults to 1 day).
-
-**Errors**
-- `400` missing fields
-- `401` invalid credentials (same message for unknown email and wrong password — deliberate: don't leak which emails exist)
-
-### `GET /api/auth/me`
-
-Current user (verified via the JWT).
-
-**Response 200**
-```json
-{
-  "id": 1, "name": "Jane Therapist", "email": "jane@clinic.test",
-  "role": "therapist", "created_at": "2026-04-30T09:04:43.310Z"
-}
-```
-
-**Errors**
-- `401` missing/invalid/expired token
+* `400` invalid input
+* `409` email already exists
 
 ---
 
-## Patients — `patient-service`
+## POST /api/auth/login
 
-### `POST /api/patients`
+### Request
 
-Register a new patient. Any authenticated user.
+```json
+{
+  "email": "jane@clinic.test",
+  "password": "secret123"
+}
+```
 
-**Request body**
+### Response 200
+
+```json
+{
+  "token": "eyJhbGciOi...",
+  "user": {
+    "id": 1,
+    "name": "Jane Therapist",
+    "email": "jane@clinic.test",
+    "role": "therapist"
+  }
+}
+```
+
+### Errors
+
+* `400` missing fields
+* `401` invalid credentials
+
+---
+
+## GET /api/auth/me
+
+### Response 200
+
+```json
+{
+  "id": 1,
+  "name": "Jane Therapist",
+  "email": "jane@clinic.test",
+  "role": "therapist",
+  "created_at": "2026-04-30T..."
+}
+```
+
+---
+
+# Patients — `patient-service`
+
+## POST /api/patients
+
+### Request
+
 ```json
 {
   "name": "Ravi Kumar",
   "age": 52,
   "gender": "male",
   "contact": "+91 98xxxxxxxx",
-  "diagnosis": "Post-op knee replacement, weeks 1-6",
+  "diagnosis": "Post-op knee replacement",
   "assigned_therapist_id": 1,
   "status": "active",
   "admission_date": "2026-04-30"
 }
 ```
 
-`name`, `age`, `gender`, `diagnosis` are required. Others are optional. `status` defaults to `"active"`. `admission_date` defaults to today.
+### Validation
 
-**Validation**
-- `age` — integer 0–150
-- `gender` — `"male" | "female" | "other"`
-- `status` — `"active" | "discharged"`
-- `assigned_therapist_id` — must exist in `users` if supplied
+* Required: `name`, `age`, `gender`, `diagnosis`
+* Age: 0–150
+* Gender: male/female/other
+* Status: active/discharged
 
-**Response 201** — full patient record (same shape as `GET /:id`).
+### Response 201
 
-**Errors**
-- `400` missing required fields, invalid age/gender/status, FK violation on `assigned_therapist_id`
-- `401` no token
-
-### `GET /api/patients`
-
-List patients. Authenticated.
-
-**Query params** (all optional)
-- `?status=active` or `?status=discharged`
-- `?therapistId=1`
-- `?search=ravi` — case-insensitive name LIKE
-
-**Response 200** — array of patient records.
-
-### `GET /api/patients/:id`
-
-**Response 200** — patient record. **404** if not found.
-
-### `PUT /api/patients/:id`
-
-Partial update. Any authenticated user.
-
-**Request body** — any subset of: `name, age, gender, contact, diagnosis, assigned_therapist_id, status, admission_date`. Validation rules same as POST. Mass-assignment protected: only the whitelisted fields are accepted.
-
-**Response 200** — updated patient record. **404** if not found.
-
-### `DELETE /api/patients/:id`
-
-**Admin only.** Returns **204** on success, **403** for therapist tokens, **404** if not found.
+Patient object
 
 ---
 
-## Sessions — `therapy-service`
+## GET /api/patients
 
-### `POST /api/sessions`
+### Query Params
 
-Schedule a therapy session.
+* `status`
+* `therapistId`
+* `search`
 
-**Request body**
+### Response
+
+Array of patients
+
+---
+
+## GET /api/patients/:id
+
+* `200` success
+* `404` not found
+
+---
+
+## PUT /api/patients/:id
+
+Partial update allowed
+
+---
+
+## DELETE /api/patients/:id
+
+* Admin only
+* `204` success
+* `403` forbidden
+
+---
+
+# Sessions — `therapy-service`
+
+## POST /api/sessions
+
+### Request
+
 ```json
 {
   "patient_id": 1,
@@ -166,104 +275,132 @@ Schedule a therapy session.
 }
 ```
 
-**Validation**
-- All except `notes` required
-- `duration_minutes` — integer 1–480
-- `scheduled_at` — any valid ISO 8601
-- FKs to `patients` and `users` enforced
+### Validation
 
-**Overlap protection**: if the same therapist already has a non-cancelled session whose `[start, start + duration)` interval overlaps the requested window, returns **409** with `conflicting_session_id`. Cancelled sessions free their slot; completed sessions still block (they happened).
+* Duration: 1–480 mins
+* Valid ISO date
+* Valid patient + therapist
 
-**Response 201** — full session record.
+### Business Logic
 
-### `GET /api/sessions`
+* Prevent overlapping sessions for therapist
 
-List sessions, ordered `scheduled_at DESC`.
+### Errors
 
-**Query params**: `?patientId=`, `?therapistId=`, `?status=` (any subset).
-
-### `GET /api/sessions/:id`
-
-Single session. 404 if not found.
-
-### `PUT /api/sessions/:id`
-
-Partial update.
-
-**Request body** — any subset of: `status, notes, scheduled_at, duration_minutes`. If time fields change, the overlap check is re-run (excluding the row being edited).
-
-**Errors**
-- `400` invalid status / time / duration
-- `404` not found
-- `409` overlap on reschedule
+* `409` conflict with existing session
 
 ---
 
-## Progress (per session) — `therapy-service`
+## GET /api/sessions
 
-### `POST /api/sessions/:id/progress`
+Filters:
 
-Record progress for a **completed** session. One progress entry per session (UNIQUE).
+* `patientId`
+* `therapistId`
+* `status`
 
-**Request body**
+---
+
+## PUT /api/sessions/:id
+
+* Allows rescheduling
+* Overlap validation rechecked
+
+---
+
+# Progress — `therapy-service`
+
+## POST /api/sessions/:id/progress
+
+### Request
+
 ```json
-{ "pain_level": 6, "mobility_score": 4, "summary": "Improved knee flexion, mild residual stiffness." }
+{
+  "pain_level": 6,
+  "mobility_score": 4,
+  "summary": "Improvement observed"
+}
 ```
 
-**Validation**: `pain_level` and `mobility_score` integers 0–10; `summary` non-empty string.
+### Rules
 
-**Response 201** — progress record.
+* Only for completed sessions
+* One entry per session
 
-**Errors**
-- `400` missing/invalid fields, **or session not yet `completed`** (response includes the current `session_status`)
-- `404` session not found
-- `409` progress already recorded — use PUT to update
+### Errors
 
-### `GET /api/sessions/:id/progress`
-
-Fetch the progress entry. **404** if none yet recorded.
-
-### `PUT /api/sessions/:id/progress`
-
-Partial update. Same field validation. **404** if no entry exists yet.
+* `400` session not completed
+* `409` already exists
 
 ---
 
-## Patient progress timeline — `therapy-service`
+## GET /api/sessions/:id/progress
 
-### `GET /api/patients/:patientId/progress`
+Returns progress or 404
 
-Chronological list of progress entries for a patient, joined with their sessions. **Empty array** if no completed sessions with progress (this is not a 404).
+---
 
-**Response 200**
+## PUT /api/sessions/:id/progress
+
+Update existing progress
+
+---
+
+# Patient Progress Timeline
+
+## GET /api/patients/:patientId/progress
+
+### Response
+
 ```json
 [
   {
-    "session_id": 1, "scheduled_at": "2026-05-02T10:00:00.000Z",
-    "session_type": "physiotherapy", "duration_minutes": 45, "therapist_id": 1,
-    "progress_id": 1, "pain_level": 6, "mobility_score": 3,
-    "summary": "Initial assessment, significant stiffness",
-    "recorded_at": "2026-04-30T..."
-  },
-  ...
+    "session_id": 1,
+    "scheduled_at": "...",
+    "pain_level": 6,
+    "mobility_score": 3
+  }
 ]
 ```
 
-Ordered by `scheduled_at ASC` so the recovery arc reads left-to-right.
+---
+
+# API Gateway
+
+## GET /health
+
+```json
+{
+  "service": "api-gateway",
+  "status": "ok",
+  "routes": {}
+}
+```
 
 ---
 
-## Gateway
+## Failure Modes
 
-### `GET /health`
-
-Gateway health probe. Returns the route table — useful for sanity-checking the deploy.
+### 404
 
 ```json
-{ "service": "api-gateway", "status": "ok", "routes": { ... } }
+{
+  "error": "route not found at gateway"
+}
 ```
 
-### Failure modes
+### 502
 
-- `404` — route not matched at the gateway. Body: `{ "error": "route not found at gateway", "path": "/api/..." }`
-- `502` — downstream service unreachable. Body: `{ "error": "upstream service unavailable", "service": "patient-service" }`. Issued by the gateway when the proxy can't connect (e.g. service is down).
+```json
+{
+  "error": "upstream service unavailable"
+}
+```
+
+---
+
+## Notes
+
+* All services communicate via REST
+* Gateway handles routing and error translation
+* Designed using microservices architecture within a monorepo
