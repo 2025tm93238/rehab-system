@@ -1,0 +1,128 @@
+/* Layout */
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 18px;
+  color: #1a202c;
+}
+
+.navbar-links {
+  list-style: none;
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-links a {
+  color: #4a5568;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.navbar-links a.active {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.navbar-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-user-name {
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.navbar-user-name em {
+  color: #718096;
+  font-style: normal;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #1a202c;
+  border-color: #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Forms (placeholder — used in Phase 10+) */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #1a202c;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-error {
+  color: #c53030;
+  margin-top: 8px;
+  font-size: 14px;
+}
