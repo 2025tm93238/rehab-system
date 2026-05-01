@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Plus, X, Search, Users, Inbox, User, ClipboardPlus, Phone,
+} from 'lucide-react';
 import { listPatients, createPatient } from '../api/patients';
 import { useAuth } from '../auth/AuthContext';
 import PatientForm from '../components/PatientForm';
@@ -26,9 +29,7 @@ export default function Patients() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -48,74 +49,87 @@ export default function Patients() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Patients</h1>
+    <>
+      <div className="page-hero">
+        <div>
+          <h1><Users size={24} /> Patients</h1>
+          <p className="page-hero-sub">{patients.length} {patients.length === 1 ? 'record' : 'records'} in the system</p>
+        </div>
         <button
           type="button"
           className="btn btn-primary"
           onClick={() => setShowForm((v) => !v)}
         >
-          {showForm ? 'Cancel' : '+ New patient'}
+          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New patient</>}
         </button>
       </div>
 
-      {showForm && (
-        <div className="patient-form-wrapper">
-          <h2>Register a new patient</h2>
-          <PatientForm
-            onSubmit={handleCreate}
-            onCancel={() => setShowForm(false)}
-            submitLabel="Add patient"
-            currentUserId={user?.role === 'therapist' ? user.id : null}
-          />
-        </div>
-      )}
-
-      <form className="filters" onSubmit={handleSearch}>
-        <input
-          type="search"
-          placeholder="Search by name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="discharged">Discharged</option>
-        </select>
-        <button type="submit" className="btn btn-secondary">Apply</button>
-        {(search || statusFilter) && (
-          <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear</button>
+      <div className="page">
+        {showForm && (
+          <div className="patient-form-wrapper">
+            <h2><ClipboardPlus size={18} /> Register a new patient</h2>
+            <PatientForm
+              onSubmit={handleCreate}
+              onCancel={() => setShowForm(false)}
+              submitLabel="Add patient"
+              currentUserId={user?.role === 'therapist' ? user.id : null}
+            />
+          </div>
         )}
-      </form>
 
-      {loading && <p>Loading patients…</p>}
-      {error && <div className="form-error">{error}</div>}
+        <form className="filters" onSubmit={handleSearch}>
+          <div className="filters-search">
+            <span className="filters-search-icon"><Search size={16} /></span>
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="discharged">Discharged</option>
+          </select>
+          <button type="submit" className="btn btn-secondary">Apply</button>
+          {(search || statusFilter) && (
+            <button type="button" className="btn btn-ghost" onClick={clearFilters}>Clear</button>
+          )}
+        </form>
 
-      {!loading && !error && patients.length === 0 && (
-        <div className="empty-state">
-          <p>No patients found.</p>
+        {loading && <p>Loading patients…</p>}
+        {error && <div className="form-error">{error}</div>}
+
+        {!loading && !error && patients.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon"><Inbox size={20} /></div>
+            <p>No patients found. Try adjusting your filters or registering one.</p>
+          </div>
+        )}
+
+        <div className="patient-grid">
+          {patients.map((p) => (
+            <Link key={p.id} to={`/patients/${p.id}`} className="patient-card">
+              <div className="patient-card-header">
+                <h3>{p.name}</h3>
+                <span className={`badge badge-${p.status}`}>{p.status}</span>
+              </div>
+              <div className="patient-card-meta">
+                <span className="patient-card-meta-item">
+                  <User size={13} /> {p.age} yrs · {p.gender}
+                </span>
+                {p.contact && (
+                  <span className="patient-card-meta-item">
+                    <Phone size={13} /> {p.contact}
+                  </span>
+                )}
+              </div>
+              <p className="patient-card-diagnosis">{p.diagnosis}</p>
+            </Link>
+          ))}
         </div>
-      )}
-
-      <div className="patient-grid">
-        {patients.map((p) => (
-          <Link key={p.id} to={`/patients/${p.id}`} className="patient-card">
-            <div className="patient-card-header">
-              <h3>{p.name}</h3>
-              <span className={`badge badge-${p.status}`}>{p.status}</span>
-            </div>
-            <div className="patient-card-meta">
-              <span>{p.age} yrs · {p.gender}</span>
-              {p.assigned_therapist_id && (
-                <span>therapist #{p.assigned_therapist_id}</span>
-              )}
-            </div>
-            <p className="patient-card-diagnosis">{p.diagnosis}</p>
-          </Link>
-        ))}
       </div>
-    </div>
+    </>
   );
 }

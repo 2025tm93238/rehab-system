@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Calendar, Activity, TrendingUp, Inbox } from 'lucide-react';
 import { getPatientProgressTimeline } from '../api/progress';
 import { formatDateTime } from '../utils/format';
 
-// Chronological list of progress entries for one patient, with a tiny
-// inline trend chart (pain dropping, mobility climbing — what we hope to see).
 export default function ProgressTimeline({ patientId }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +28,7 @@ export default function ProgressTimeline({ patientId }) {
   if (entries.length === 0) {
     return (
       <div className="empty-state">
+        <div className="empty-state-icon"><Inbox size={20} /></div>
         <p>No completed sessions with recorded progress yet.</p>
       </div>
     );
@@ -40,10 +40,16 @@ export default function ProgressTimeline({ patientId }) {
       <ol className="progress-list">
         {entries.map((e) => (
           <li key={e.progress_id} className="progress-list-item">
-            <div className="progress-list-when">{formatDateTime(e.scheduled_at)}</div>
+            <div className="progress-list-when">
+              <Calendar size={13} /> {formatDateTime(e.scheduled_at)}
+            </div>
             <div className="progress-list-scores">
-              <span className="progress-pill progress-pill-pain">pain {e.pain_level}</span>
-              <span className="progress-pill progress-pill-mobility">mobility {e.mobility_score}</span>
+              <span className="progress-pill progress-pill-pain">
+                <Activity size={12} /> pain {e.pain_level}
+              </span>
+              <span className="progress-pill progress-pill-mobility">
+                <TrendingUp size={12} /> mobility {e.mobility_score}
+              </span>
               <span className="progress-list-type">{e.session_type}</span>
             </div>
             <div className="progress-list-summary">{e.summary}</div>
@@ -54,8 +60,6 @@ export default function ProgressTimeline({ patientId }) {
   );
 }
 
-// Minimal SVG trend chart for pain (red) and mobility (green) across the
-// timeline. Plain SVG keeps the bundle small and the dependency list short.
 function TrendChart({ entries }) {
   if (entries.length < 2) return null;
 
@@ -78,12 +82,12 @@ function TrendChart({ entries }) {
             <text x={4} y={yFor(tick) + 4} fontSize="10" fill="#94a3b8">{tick}</text>
           </g>
         ))}
-        <path d={painPath} fill="none" stroke="#dc2626" strokeWidth="2" />
-        <path d={mobPath} fill="none" stroke="#047857" strokeWidth="2" />
+        <path d={painPath} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d={mobPath} fill="none" stroke="#047857" strokeWidth="2.5" strokeLinejoin="round" />
         {entries.map((e, i) => (
           <g key={e.progress_id}>
-            <circle cx={xFor(i)} cy={yFor(e.pain_level)} r="3" fill="#dc2626" />
-            <circle cx={xFor(i)} cy={yFor(e.mobility_score)} r="3" fill="#047857" />
+            <circle cx={xFor(i)} cy={yFor(e.pain_level)} r="4" fill="#dc2626" stroke="white" strokeWidth="1.5" />
+            <circle cx={xFor(i)} cy={yFor(e.mobility_score)} r="4" fill="#047857" stroke="white" strokeWidth="1.5" />
           </g>
         ))}
       </svg>

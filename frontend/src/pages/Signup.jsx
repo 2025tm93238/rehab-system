@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { UserPlus, AlertCircle, Activity } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export default function Signup() {
@@ -33,65 +34,46 @@ export default function Signup() {
 
   return (
     <div className="page auth-card">
+      <div className="auth-icon"><Activity size={24} /></div>
       <h1>Create your account</h1>
       <p className="auth-subtitle">Join the clinic on Rehab Tracker.</p>
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="name">Full name</label>
-          <input
-            id="name"
-            type="text"
-            autoComplete="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoFocus
-          />
+          <input id="name" type="text" autoComplete="name"
+            value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
         </div>
 
         <div className="form-group">
           <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input id="email" type="email" autoComplete="email"
+            value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
 
         <div className="form-group">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+          <input id="password" type="password" autoComplete="new-password"
+            value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           <small className="form-hint">At least 6 characters.</small>
         </div>
 
         <div className="form-group">
           <label htmlFor="role">Role</label>
-          <select
-            id="role"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
+          <select id="role" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="therapist">Therapist</option>
             <option value="admin">Administrator</option>
           </select>
         </div>
 
-        {error && <div className="form-error" role="alert">{error}</div>}
+        {error && (
+          <div className="form-error" role="alert">
+            <AlertCircle size={16} /> <span>{error}</span>
+          </div>
+        )}
 
         <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-          {loading ? 'Creating account…' : 'Create account'}
+          <UserPlus size={16} /> {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>
 

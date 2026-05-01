@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Users, UserCheck, CalendarClock, CheckCircle2, XCircle, TrendingUp,
+  Inbox, Calendar, History, LayoutDashboard,
+} from 'lucide-react';
 import { listPatients } from '../api/patients';
 import { listSessions } from '../api/sessions';
 import { useAuth } from '../auth/AuthContext';
@@ -41,54 +45,67 @@ export default function Dashboard() {
     .slice(0, 5);
 
   return (
-    <div className="page">
-      <h1>Dashboard</h1>
-      <p>Welcome back, <strong>{user?.name}</strong> ({user?.role}).</p>
+    <>
+      <div className="dashboard-hero">
+        <h1><LayoutDashboard size={24} /> Dashboard</h1>
+        <p>Welcome back, {user?.name} — signed in as <strong>{user?.role}</strong>.</p>
+      </div>
 
-      {loading && <p>Loading…</p>}
-      {error && <div className="form-error">{error}</div>}
+      {loading && <div className="page"><p>Loading…</p></div>}
+      {error && <div className="page"><div className="form-error">{error}</div></div>}
 
       {!loading && !error && (
         <>
           <div className="stat-grid">
-            <StatCard label="Patients (total)"  value={stats.totalPatients}    to="/patients" />
-            <StatCard label="Active patients"   value={stats.activePatients}   to="/patients" />
-            <StatCard label="Sessions scheduled" value={stats.scheduled}       to="/sessions" tone="blue" />
-            <StatCard label="Sessions completed" value={stats.completed}       to="/sessions" tone="green" />
-            <StatCard label="Completed (7 days)" value={stats.completedThisWeek} tone="green" />
-            <StatCard label="Sessions cancelled" value={stats.cancelled}       to="/sessions" tone="red" />
+            <StatCard label="Total patients"     value={stats.totalPatients}     to="/patients" tone="blue" Icon={Users} />
+            <StatCard label="Active patients"    value={stats.activePatients}    to="/patients" tone="green" Icon={UserCheck} />
+            <StatCard label="Scheduled sessions" value={stats.scheduled}         to="/sessions" tone="purple" Icon={CalendarClock} />
+            <StatCard label="Completed sessions" value={stats.completed}         to="/sessions" tone="teal" Icon={CheckCircle2} />
+            <StatCard label="Last 7 days"        value={stats.completedThisWeek}                tone="amber" Icon={TrendingUp} />
+            <StatCard label="Cancelled"          value={stats.cancelled}         to="/sessions" tone="red"   Icon={XCircle} />
           </div>
 
-          <div className="dashboard-row">
-            <section className="dashboard-section">
-              <h2>Upcoming sessions</h2>
-              {upcoming.length === 0 ? (
-                <div className="empty-state"><p>No upcoming sessions.</p></div>
-              ) : (
-                <SessionList sessions={upcoming} />
-              )}
-            </section>
+          <div className="page">
+            <div className="dashboard-row">
+              <section className="dashboard-section">
+                <h2><Calendar size={18} /> Upcoming sessions</h2>
+                {upcoming.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><Inbox size={20} /></div>
+                    <p>No upcoming sessions.</p>
+                  </div>
+                ) : (
+                  <SessionList sessions={upcoming} />
+                )}
+              </section>
 
-            <section className="dashboard-section">
-              <h2>Recently completed</h2>
-              {recentlyCompleted.length === 0 ? (
-                <div className="empty-state"><p>No completed sessions yet.</p></div>
-              ) : (
-                <SessionList sessions={recentlyCompleted} />
-              )}
-            </section>
+              <section className="dashboard-section">
+                <h2><History size={18} /> Recently completed</h2>
+                {recentlyCompleted.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><Inbox size={20} /></div>
+                    <p>No completed sessions yet.</p>
+                  </div>
+                ) : (
+                  <SessionList sessions={recentlyCompleted} />
+                )}
+              </section>
+            </div>
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 
-function StatCard({ label, value, to, tone }) {
+function StatCard({ label, value, to, tone, Icon }) {
   const card = (
     <div className={`stat-card ${tone ? `stat-card-${tone}` : ''}`}>
-      <div className="stat-value">{value}</div>
-      <div className="stat-label">{label}</div>
+      <div className="stat-card-icon"><Icon size={22} /></div>
+      <div className="stat-card-body">
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
+      </div>
     </div>
   );
   return to ? <Link to={to} className="stat-card-link">{card}</Link> : card;

@@ -1,27 +1,104 @@
+/* ============================
+   Design tokens
+   ============================ */
+:root {
+  /* Colors */
+  --c-bg: #f6f8fb;
+  --c-surface: #ffffff;
+  --c-surface-2: #f8fafc;
+  --c-border: #e2e8f0;
+  --c-border-strong: #cbd5e0;
+
+  --c-text: #0f172a;
+  --c-text-muted: #475569;
+  --c-text-soft: #94a3b8;
+
+  --c-primary: #2563eb;
+  --c-primary-hover: #1d4ed8;
+  --c-primary-soft: #eff6ff;
+  --c-primary-strong: #1e3a8a;
+
+  --c-success: #047857;
+  --c-success-soft: #ecfdf5;
+  --c-warn: #b45309;
+  --c-warn-soft: #fffbeb;
+  --c-danger: #dc2626;
+  --c-danger-soft: #fef2f2;
+
+  --c-accent-purple: #7c3aed;
+  --c-accent-purple-soft: #f5f3ff;
+  --c-accent-teal: #0d9488;
+  --c-accent-teal-soft: #f0fdfa;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 20px -10px rgba(15, 23, 42, 0.15),
+               0 4px 8px -4px rgba(15, 23, 42, 0.1);
+
+  /* Transitions */
+  --tx-fast: 0.15s ease;
+}
+
+/* ============================
+   Reset / base
+   ============================ */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  background: #f5f7fa;
-  color: #1a202c;
-  line-height: 1.5;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 600px at 10% -20%, rgba(124, 58, 237, 0.10), transparent 60%),
+    radial-gradient(1000px 500px at 110% -30%, rgba(37, 99, 235, 0.10), transparent 60%),
+    var(--c-bg);
+  background-attachment: fixed;
+  color: var(--c-text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
   margin-top: 0;
+  letter-spacing: -0.015em;
+  color: var(--c-text);
 }
+
+h1 { font-size: 28px; font-weight: 700; }
+h2 { font-size: 19px; font-weight: 600; }
+h3 { font-size: 16px; font-weight: 600; }
 
 a {
-  color: #2563eb;
+  color: var(--c-primary);
   text-decoration: none;
+  transition: color var(--tx-fast);
 }
 
 a:hover {
+  color: var(--c-primary-hover);
   text-decoration: underline;
+}
+
+::selection {
+  background: var(--c-primary-soft);
+  color: var(--c-primary-strong);
 }

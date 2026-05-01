@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
+import { Inbox } from 'lucide-react';
 import { formatDateTime } from '../utils/format';
 
-// Compact list of sessions — used on the Sessions page and on Patient detail.
-// `hidePatient` hides the patient column (when we already know we're showing
-// one patient's sessions).
 export default function SessionList({ sessions, hidePatient = false }) {
   if (!sessions || sessions.length === 0) {
-    return <div className="empty-state"><p>No sessions yet.</p></div>;
+    return (
+      <div className="empty-state">
+        <div className="empty-state-icon"><Inbox size={20} /></div>
+        <p>No sessions yet.</p>
+      </div>
+    );
   }
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Plus, X, Calendar, CalendarPlus, Inbox } from 'lucide-react';
 import { listSessions, createSession } from '../api/sessions';
 import { useAuth } from '../auth/AuthContext';
 import SessionForm from '../components/SessionForm';
@@ -49,54 +50,65 @@ export default function Sessions() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Therapy sessions</h1>
+    <>
+      <div className="page-hero">
+        <div>
+          <h1><Calendar size={24} /> Therapy sessions</h1>
+          <p className="page-hero-sub">{sessions.length} {sessions.length === 1 ? 'session' : 'sessions'} in view</p>
+        </div>
         <button
           type="button"
           className="btn btn-primary"
           onClick={() => setShowForm((v) => !v)}
         >
-          {showForm ? 'Cancel' : '+ Schedule session'}
+          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> Schedule session</>}
         </button>
       </div>
 
-      {showForm && (
-        <div className="patient-form-wrapper">
-          <h2>Schedule a new session</h2>
-          <SessionForm
-            onSubmit={handleCreate}
-            onCancel={() => setShowForm(false)}
-            currentUserId={user?.id}
-            submitLabel="Schedule session"
-          />
-        </div>
-      )}
-
-      <form className="filters" onSubmit={handleApply}>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <input
-          type="number"
-          min="1"
-          placeholder="Therapist ID"
-          value={therapistFilter}
-          onChange={(e) => setTherapistFilter(e.target.value)}
-          style={{ maxWidth: 160, padding: '8px 12px', border: '1px solid #cbd5e0', borderRadius: 6 }}
-        />
-        <button type="submit" className="btn btn-secondary">Apply</button>
-        {(statusFilter || therapistFilter) && (
-          <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear</button>
+      <div className="page">
+        {showForm && (
+          <div className="patient-form-wrapper">
+            <h2><CalendarPlus size={18} /> Schedule a new session</h2>
+            <SessionForm
+              onSubmit={handleCreate}
+              onCancel={() => setShowForm(false)}
+              currentUserId={user?.id}
+              submitLabel="Schedule session"
+            />
+          </div>
         )}
-      </form>
 
-      {loading && <p>Loading sessions…</p>}
-      {error && <div className="form-error">{error}</div>}
-      {!loading && !error && <SessionList sessions={sessions} />}
-    </div>
+        <form className="filters" onSubmit={handleApply}>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <input
+            type="number"
+            min="1"
+            placeholder="Therapist ID"
+            value={therapistFilter}
+            onChange={(e) => setTherapistFilter(e.target.value)}
+            style={{ maxWidth: 160, padding: '9px 12px', border: '1px solid var(--c-border-strong)', borderRadius: 6 }}
+          />
+          <button type="submit" className="btn btn-secondary">Apply</button>
+          {(statusFilter || therapistFilter) && (
+            <button type="button" className="btn btn-ghost" onClick={clearFilters}>Clear</button>
+          )}
+        </form>
+
+        {loading && <p>Loading sessions…</p>}
+        {error && <div className="form-error">{error}</div>}
+        {!loading && !error && sessions.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon"><Inbox size={20} /></div>
+            <p>No sessions match the current filters.</p>
+          </div>
+        )}
+        {!loading && !error && sessions.length > 0 && <SessionList sessions={sessions} />}
+      </div>
+    </>
   );
 }
