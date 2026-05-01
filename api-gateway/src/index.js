@@ -33,11 +33,26 @@ const isPatientProgressTimeline = (path) =>
 // /api/... path (Express prefix mounting would strip it before pathRewrite
 // could run, breaking the rewrite).
 
+// onProxyError sends a JSON 502 if the downstream service is unreachable,
+// instead of letting the request hang or returning Express's HTML default.
+function onProxyError(serviceName) {
+  return (err, req, res) => {
+    console.error(`[gateway] proxy error to ${serviceName}:`, err.code || err.message);
+    if (res && !res.headersSent && typeof res.status === 'function') {
+      res.status(502).json({
+        error: 'upstream service unavailable',
+        service: serviceName,
+      });
+    }
+  };
+}
+
 const authProxy = createProxyMiddleware({
   target: process.env.AUTH_SERVICE_URL,
   changeOrigin: true,
   pathFilter: '/api/auth',
   pathRewrite: { '^/api/auth': '' },
+  on: { error: onProxyError('auth-service') },
 });
 
 const patientProxy = createProxyMiddleware({
@@ -46,6 +61,7 @@ const patientProxy = createProxyMiddleware({
   pathFilter: (path) =>
     /^\/api\/patients(\/|$)/.test(path) && !isPatientProgressTimeline(path),
   pathRewrite: { '^/api': '' },
+  on: { error: onProxyError('patient-service') },
 });
 
 const therapyProxy = createProxyMiddleware({
@@ -54,6 +70,7 @@ const therapyProxy = createProxyMiddleware({
   pathFilter: (path) =>
     /^\/api\/sessions(\/|$)/.test(path) || isPatientProgressTimeline(path),
   pathRewrite: { '^/api': '' },
+  on: { error: onProxyError('therapy-service') },
 });
 
 app.use(authProxy);

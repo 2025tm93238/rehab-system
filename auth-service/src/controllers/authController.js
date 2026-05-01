@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 
 const ALLOWED_ROLES = ['admin', 'therapist'];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function register(req, res) {
   try {
@@ -27,6 +28,10 @@ export async function register(req, res) {
     }
 
     const emailNormalized = String(email).toLowerCase().trim();
+
+    if (!EMAIL_REGEX.test(emailNormalized)) {
+      return res.status(400).json({ error: 'email is not in a valid format' });
+    }
 
     const existing = await pool.query(
       'SELECT id FROM users WHERE email = $1',

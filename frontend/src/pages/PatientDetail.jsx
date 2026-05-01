@@ -17,6 +17,7 @@ export default function PatientDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,11 +48,12 @@ export default function PatientDetail() {
     if (!confirm(`Delete patient "${patient.name}"? This cannot be undone.`)) {
       return;
     }
+    setDeleteError(null);
     try {
       await deletePatient(id);
       navigate('/patients', { replace: true });
     } catch (err) {
-      alert(err.response?.data?.error || 'Delete failed.');
+      setDeleteError(err.response?.data?.error || 'Delete failed.');
     }
   }
 
@@ -82,6 +84,8 @@ export default function PatientDetail() {
           </div>
         )}
       </div>
+
+      {deleteError && <div className="form-error">{deleteError}</div>}
 
       {editing ? (
         <div className="patient-form-wrapper">
