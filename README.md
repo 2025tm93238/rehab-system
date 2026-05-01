@@ -17,17 +17,11 @@ https://github.com/2025tm93238/rehab-system
 
 ---
 
-## 📊 Key System Diagrams
+## 📊 System Diagrams
 
-### Architecture
-![Architecture](./docs/01_ARCHITECTURE.png)
-
-### Database Schema
-![DB Schema](./docs/02_DB_SCHEMA.png)
-
-### Component Hierarchy
-![Component Hierarchy](./docs/03_COMPONENT_HIERARCHY.png)
-
+- Architecture → docs/01_ARCHITECTURE.png  
+- DB Schema → docs/02_DB_SCHEMA.png  
+- Component Hierarchy → docs/03_COMPONENT_HEIRARCHY.png  
 ---
 
 ## Problem
