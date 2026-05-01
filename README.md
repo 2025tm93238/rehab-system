@@ -26,7 +26,7 @@ https://github.com/2025tm93238/rehab-system
 ![DB Schema](./docs/02_DB_SCHEMA.png)
 
 ### Component Hierarchy
-![Component Hierarchy](./docs/03_COMPONENT_HEIRARCHY.png)
+![Component Hierarchy](./docs/03_COMPONENT_HIERARCHY.png)
 
 ---
 
