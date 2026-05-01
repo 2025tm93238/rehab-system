@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import PatientForm from '../components/PatientForm';
 import SessionForm from '../components/SessionForm';
 import SessionList from '../components/SessionList';
+import ProgressTimeline from '../components/ProgressTimeline';
 
 export default function PatientDetail() {
   const { id } = useParams();
@@ -107,6 +108,11 @@ export default function PatientDetail() {
       )}
 
       <PatientSessions patientId={patient.id} currentUser={user} />
+
+      <section className="patient-sessions">
+        <h2>Progress timeline</h2>
+        <ProgressTimeline patientId={patient.id} />
+      </section>
     </div>
   );
 }

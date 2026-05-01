@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getSession, updateSession } from '../api/sessions';
 import { getPatient } from '../api/patients';
 import SessionForm from '../components/SessionForm';
+import SessionProgress from '../components/SessionProgress';
 import { formatDateTime } from '../utils/format';
 
 export default function SessionDetail() {
@@ -152,7 +153,7 @@ export default function SessionDetail() {
           {session.status === 'completed' && (
             <section className="patient-sessions">
               <h2>Progress</h2>
-              <p>Progress recording lands here in Phase 13.</p>
+              <SessionProgress sessionId={session.id} />
             </section>
           )}
         </>
