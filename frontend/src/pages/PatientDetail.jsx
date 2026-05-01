@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPatient, updatePatient, deletePatient } from '../api/patients';
+import { listSessions, createSession } from '../api/sessions';
 import { useAuth } from '../auth/AuthContext';
 import PatientForm from '../components/PatientForm';
+import SessionForm from '../components/SessionForm';
+import SessionList from '../components/SessionList';
 
 export default function PatientDetail() {
   const { id } = useParams();
@@ -103,10 +106,67 @@ export default function PatientDetail() {
         </dl>
       )}
 
-      <section className="patient-sessions">
-        <h2>Therapy sessions</h2>
-        <p>Session list and progress timeline land here in Phase 12–13.</p>
-      </section>
+      <PatientSessions patientId={patient.id} currentUser={user} />
     </div>
+  );
+}
+
+function PatientSessions({ patientId, currentUser }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listSessions({ patientId });
+      setSessions(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not load sessions.');
+    } finally {
+      setLoading(false);
+    }
+  }, [patientId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  async function handleCreate(payload) {
+    await createSession(payload);
+    setShowForm(false);
+    await refresh();
+  }
+
+  return (
+    <section className="patient-sessions">
+      <div className="page-header">
+        <h2>Therapy sessions</h2>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setShowForm((v) => !v)}
+        >
+          {showForm ? 'Cancel' : '+ Schedule session'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="patient-form-wrapper">
+          <SessionForm
+            initial={{ patient_id: patientId }}
+            lockPatient
+            onSubmit={handleCreate}
+            onCancel={() => setShowForm(false)}
+            currentUserId={currentUser?.id}
+            submitLabel="Schedule session"
+          />
+        </div>
+      )}
+
+      {loading && <p>Loading sessions…</p>}
+      {error && <div className="form-error">{error}</div>}
+      {!loading && !error && <SessionList sessions={sessions} hidePatient />}
+    </section>
   );
 }

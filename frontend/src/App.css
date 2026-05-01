@@ -365,3 +365,54 @@
   text-align: center;
   color: #718096;
 }
+
+/* Session list table */
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.session-table th,
+.session-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.session-table th {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #f8fafc;
+}
+
+.session-table tr:hover td {
+  background: #f8fafc;
+}
+
+/* Session-specific status colours */
+.badge-scheduled {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.badge-completed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badge-cancelled {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+/* Status action row on session detail */
+.status-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
